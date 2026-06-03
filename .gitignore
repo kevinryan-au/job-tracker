@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Cloudflare / Wrangler
+.wrangler/
+node_modules/
+.dev.vars
+
+# Secrets — never commit these
+*.env
+.env*
+secrets.json
