@@ -74,7 +74,7 @@ Tell the user:
 Save what they paste as TRELLO_KEY.
 
 Then tell them:
-> "On the same page, click the 'Token' link (it's just below your API Key). Approve the permission request, then copy the token and paste it here."
+> "On the same page, click the 'Token' link (it's just below your API Key). Trello will ask you to approve access — this is safe, it just allows Job Clipper to create and move cards on your behalf. Click Allow, then copy the long token string that appears and paste it here."
 
 Save what they paste as TRELLO_TOKEN.
 
@@ -133,17 +133,9 @@ Replace all the IDs with the values captured in Step 5.
 
 ### Step 7 — Deploy the Worker
 
-From the project root:
+Run from the `worker/` directory (wrangler needs `wrangler.toml` to be present):
 ```bash
-cd worker
-wrangler deploy
-```
-
-If there's no `wrangler.toml`, create one first:
-```toml
-name = "job-clipper"
-main = "worker.js"
-compatibility_date = "2024-01-01"
+cd worker && wrangler deploy
 ```
 
 After deploy succeeds, capture the Worker URL from the output — it will look like:
@@ -155,7 +147,9 @@ Save this as WORKER_URL.
 
 ### Step 8 — Set Worker environment variables
 
+Run these from the `worker/` directory:
 ```bash
+cd worker
 echo "{TRELLO_KEY}" | wrangler secret put TRELLO_KEY
 echo "{TRELLO_TOKEN}" | wrangler secret put TRELLO_TOKEN
 echo "*" | wrangler secret put ALLOWED_ORIGIN
@@ -232,17 +226,18 @@ If the card doesn't appear, check:
 ```
 job-clipper/
 ├── CLAUDE.md                 ← you are here
+├── README.md
+├── LICENSE
 ├── extension/
 │   ├── manifest.json         ← host permissions, content script config
 │   ├── background.js         ← service worker, routes saves to Worker
 │   ├── content-linkedin.js   ← LinkedIn scraper + Clip button
 │   ├── content-seek.js       ← Seek scraper + Clip button
-│   ├── popup.html/js         ← tracker UI
-│   ├── trello.js             ← (legacy, unused)
+│   ├── popup.html / popup.js ← tracker UI
 │   └── icons/
 └── worker/
     ├── worker.js             ← Cloudflare Worker (Trello API, dedup)
-    └── wrangler.toml         ← created during setup
+    └── wrangler.toml
 ```
 
 ---
