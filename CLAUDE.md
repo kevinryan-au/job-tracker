@@ -95,7 +95,7 @@ API calls to make:
 ```
 POST https://api.trello.com/1/boards/?name=Job%20Hunt&defaultLists=false&key={TRELLO_KEY}&token={TRELLO_TOKEN}
 ```
-Save the board `id` as BOARD_ID.
+Save the board `id` as BOARD_ID and the board `url` as BOARD_URL.
 
 **Create each list** (in order — Trello displays them in creation order):
 ```
@@ -165,21 +165,25 @@ Confirm each one succeeds before moving on.
 
 ---
 
-### Step 9 — Update the extension with the Worker URL
+### Step 9 — Update the extension with the Worker URL and Trello board URL
 
 Edit `extension/background.js`. Find this line near the top:
 
 ```js
-const WORKER_URL = 'https://job-clipper.kevin-andrew-ryan.workers.dev';
+const WORKER_URL = 'YOUR_WORKER_URL';
 ```
 
-Replace the URL with WORKER_URL from Step 7.
+Replace `YOUR_WORKER_URL` with WORKER_URL from Step 7.
 
-Also update `extension/manifest.json` — find the host_permissions entry for `workers.dev` and replace it with the user's Worker URL:
+Edit `extension/popup.js`. Find these two lines near the top:
 
-```json
-"https://<their-worker-url>/*"
+```js
+const WORKER_URL = 'YOUR_WORKER_URL';
+const TRELLO_BOARD_URL = 'YOUR_TRELLO_BOARD_URL';
 ```
+
+Replace `YOUR_WORKER_URL` with WORKER_URL from Step 7.
+Replace `YOUR_TRELLO_BOARD_URL` with BOARD_URL from Step 5.
 
 ---
 

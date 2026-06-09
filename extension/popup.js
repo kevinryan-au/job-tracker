@@ -1,5 +1,7 @@
 // Set automatically during Claude setup — must match background.js
 const WORKER_URL = 'YOUR_WORKER_URL';
+// Set automatically during Claude setup — links the popup "Open board" button to your board
+const TRELLO_BOARD_URL = 'YOUR_TRELLO_BOARD_URL';
 
 // Send a request to the Cloudflare Worker
 async function workerReq(body) {
@@ -247,7 +249,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 document.getElementById('export-btn').addEventListener('click', exportCSV);
 
 document.getElementById('trello-board-link').addEventListener('click', () => {
-  chrome.tabs.create({ url: 'https://trello.com' });
+  chrome.tabs.create({ url: TRELLO_BOARD_URL || 'https://trello.com' });
 });
 
 document.getElementById('clear-btn').addEventListener('click', () => {
