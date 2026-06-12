@@ -1,5 +1,5 @@
-# Job Clipper — optional mobile Worker
-# The worker name becomes part of your URL: https://job-clipper.<account>.workers.dev
-name = "job-clipper"
+# Job Tracker — optional mobile Worker
+# The worker name becomes part of your URL: https://job-tracker.<account>.workers.dev
+name = "job-tracker"
 main = "worker.js"
 compatibility_date = "2024-01-01"

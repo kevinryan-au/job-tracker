@@ -1,4 +1,4 @@
-// Job Clipper — options page
+// Job Tracker — options page
 // Pure UI: all Trello work happens in background.js via messages.
 
 const $ = (id) => document.getElementById(id);

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Job Clipper",
+  "name": "Job Tracker",
   "version": "3.0",
-  "description": "Clip jobs from Seek and LinkedIn into a local tracker, with optional sync to your Trello board.",
+  "description": "Track jobs from Seek and LinkedIn into a local tracker, with optional sync to your Trello board.",
   "permissions": ["storage"],
   "host_permissions": [
     "https://api.trello.com/*"

@@ -1,8 +1,8 @@
 # CLAUDE.md — map of this codebase for Claude
 
-Job Clipper is a Chrome (MV3) extension that clips job listings from Seek and LinkedIn into a
+Job Tracker is a Chrome (MV3) extension that saves job listings from Seek and LinkedIn into a
 local tracker, with optional sync to the user's Trello board, plus an optional Cloudflare Worker
-that lets an iOS Shortcut clip from the phone. It is also a **template**: users are encouraged to
+that lets an iOS Shortcut save from the phone. It is also a **template**: users are encouraged to
 ask you to adapt it — new source sites, new destinations, new entry points. `BUILD-YOUR-OWN.md`
 is the human-facing version of that pitch; this file is your map.
 
@@ -24,7 +24,7 @@ extension/               the Chrome extension (load this folder unpacked)
   popup.html/js          tracker UI; pure view, mutates only via messages to background
   options.html/js        Trello connect/disconnect/sync UI; pure view, same rule
 mobile/                  OPTIONAL phone add-on (Cloudflare Worker + iOS Shortcut recipe)
-  worker.js              GET /clip?url= → server-side scrape → Trello card
+  worker.js              GET /track?url= → server-side scrape → Trello card
   README.md              human setup guide (deploy + Shortcut)
 ```
 
@@ -46,7 +46,7 @@ mobile/                  OPTIONAL phone add-on (Cloudflare Worker + iOS Shortcut
 
 **Dedup is three layers** (all in background.js): in-flight `Set` → storage scan by `url` →
 live board check (`trelloFindCardByUrl`, which matches the newline-terminated `Link: <url>` line
-in open cards' descriptions). If a card already exists (e.g. clipped from the phone), its id is
+in open cards' descriptions). If a card already exists (e.g. saved from the phone), its id is
 **adopted** onto the local job rather than creating a duplicate. Jobs-mutating message handlers
 are serialized through a queue in the router — keep new mutating handlers in the `MUTATING` set
 or concurrent read-modify-writes will clobber each other.
@@ -75,7 +75,7 @@ or concurrent read-modify-writes will clobber each other.
 
 ## Playbooks
 
-### "The button stopped working / clip can't read details" (broken scraper)
+### "The button stopped working / can't read job details" (broken scraper)
 
 The most common request — sites change their DOM constantly. Diagnose in this order:
 
@@ -102,7 +102,7 @@ The most common request — sites change their DOM constantly. Diagnose in this 
    (`popup.js → renderStats`) if they want it filterable.
 5. If they use the mobile worker, extend its `scrape()` canonical-URL logic for the new site.
 
-### "Send clips to [Notion/Airtable/Sheets/…] instead of Trello"
+### "Send jobs to [Notion/Airtable/Sheets/…] instead of Trello"
 
 1. Write a new destination adapter implementing trello.js's contract: `validate`,
    `findOrCreateBoard` (or database/sheet equivalent), `createCard`, `moveCard`, `archiveCard`,
@@ -113,7 +113,7 @@ The most common request — sites change their DOM constantly. Diagnose in this 
    token (Notion does; Google Sheets needs OAuth — warn the user it's more involved).
 5. Keep statuses: saved/applied/interview/offer/rejected map to lists/selects/columns.
 
-### "Set up mobile clipping" (deploy the optional Worker)
+### "Set up mobile saving" (deploy the optional Worker)
 
 Follow `mobile/README.md` with the user, driving the terminal yourself where possible:
 
@@ -122,10 +122,10 @@ Follow `mobile/README.md` with the user, driving the terminal yourself where pos
 3. `curl` Trello for their board id and Saved-list id (commands in mobile/README.md); write them
    into `mobile/worker.js` constants.
 4. From `mobile/`: `npx wrangler login` (browser approve) → `npx wrangler deploy` → capture URL.
-5. `npx wrangler secret put TRELLO_KEY`, `TRELLO_TOKEN`, and `CLIP_SECRET` (generate a passphrase
+5. `npx wrangler secret put TRELLO_KEY`, `TRELLO_TOKEN`, and `TRACK_SECRET` (generate a passphrase
    for the latter, e.g. `openssl rand -hex 12` — it gates the endpoint; keep it for step 6 and
    the Shortcut URL).
-6. Test: `curl "https://<worker-url>/clip?s=<secret>&url=<real job url>"` — expect
+6. Test: `curl "https://<worker-url>/track?s=<secret>&url=<real job url>"` — expect
    "Saved to Trello: …", then run again and expect "Already saved". Note `url=` must be the
    LAST query param (the worker reads everything after it, so unencoded `&`s in job URLs survive).
 7. Walk them through the Shortcut recipe (mobile/README.md) — that part is on their phone.

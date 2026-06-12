@@ -1,4 +1,4 @@
-// Job Clipper — Trello API client
+// Job Tracker — Trello API client
 // Loaded into the background service worker via importScripts('trello.js').
 // All Trello traffic in the extension goes through these functions; popup and
 // options pages reach them by messaging background.js, so this is the single

@@ -1,4 +1,4 @@
-// Job Clipper — popup tracker UI
+// Job Tracker — popup tracker UI
 // Pure view: reads jobs from chrome.storage.local, but every mutation goes
 // through background.js via messages (single-writer model). The popup
 // re-renders off storage.onChanged, so background writes flow back here.
@@ -68,7 +68,7 @@ function render() {
       <div class="empty">
         <div class="empty-icon">&#128269;</div>
         <div class="empty-title">${allJobs.length === 0 ? 'No jobs saved yet' : 'No jobs match this filter'}</div>
-        <div class="empty-sub">${allJobs.length === 0 ? 'Browse Seek or LinkedIn and click<br>"+ Clip job" on any listing.' : 'Try a different filter.'}</div>
+        <div class="empty-sub">${allJobs.length === 0 ? 'Browse Seek or LinkedIn and click<br>"+ Track job" on any listing.' : 'Try a different filter.'}</div>
       </div>`;
     return;
   }

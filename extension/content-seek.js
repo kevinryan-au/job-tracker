@@ -1,11 +1,11 @@
-// Job Clipper v3.0 — Seek content script
+// Job Tracker v3.0 — Seek content script
 // Handles both single job page (/job/12345) and multi-pane search (/jobs?...)
 
 (function () {
   'use strict';
 
-  const FLOAT_ID = 'jcp-float-seek-v20';
-  const TOAST_ID = 'jcp-toast-seek-v20';
+  const FLOAT_ID = 'jt-float-seek-v20';
+  const TOAST_ID = 'jt-toast-seek-v20';
 
   function getJobId() {
     // Single job page: seek.com.au/job/12345678
@@ -96,7 +96,7 @@
           btn.innerText = '✓ Saved';
           btn.style.background = '#15803d';
           setTimeout(() => {
-            btn.innerText = '+ Clip job';
+            btn.innerText = '+ Track job';
             btn.style.background = '#1d4ed8';
             enableButton();
           }, 2500);
@@ -109,7 +109,7 @@
   }
 
   function rebuildButton() {
-    ['job-clipper-float', 'jcp-float-seek-v19', 'jcp-float-seek-v20'].forEach(id =>
+    ['job-tracker-float', 'jt-float-seek-v19', 'jt-float-seek-v20'].forEach(id =>
       document.getElementById(id)?.remove()
     );
 
@@ -121,7 +121,7 @@
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');
-    btn.innerText = '+ Clip job';
+    btn.innerText = '+ Track job';
     btn.style.cssText = `padding:10px 20px;background:#1d4ed8;color:#fff;font-size:14px;
       font-weight:600;border:none;border-radius:24px;cursor:pointer;font-family:inherit;
       box-shadow:0 2px 12px rgba(29,78,216,.45);`;

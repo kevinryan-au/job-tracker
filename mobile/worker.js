@@ -1,23 +1,23 @@
-// Job Clipper — optional mobile add-on (Cloudflare Worker)
+// Job Tracker — optional mobile add-on (Cloudflare Worker)
 //
-// Gives your PHONE a way to clip: an iOS Shortcut shares a job URL to
-// GET /clip?s=<secret>&url=..., this Worker fetches the page server-side,
+// Gives your PHONE a way to save: an iOS Shortcut shares a job URL to
+// GET /track?s=<secret>&url=..., this Worker fetches the page server-side,
 // extracts the job details, and files a card into the "Saved" list of your
-// board — with the same URL-based dedup the extension uses, so clipping on
+// board — with the same URL-based dedup the extension uses, so saving on
 // the phone and again at the desk doesn't double up.
 //
 // The desktop extension does NOT use this. Deploy it only if you want mobile
-// clipping. Setup: see mobile/README.md (or let Claude Code walk you through
+// saving. Setup: see mobile/README.md (or let Claude Code walk you through
 // it — CLAUDE.md has the playbook).
 //
 // Secrets (set via `wrangler secret put`):
 //   TRELLO_KEY, TRELLO_TOKEN — your Trello credentials
-//   CLIP_SECRET — any passphrase you invent; gates the endpoint so only your
+//   TRACK_SECRET — any passphrase you invent; gates the endpoint so only your
 //                 Shortcut can create cards or make this Worker fetch URLs
 // Constants (edit below): BOARD_ID, SAVED_LIST_ID
 
 const BOARD_ID = 'YOUR_BOARD_ID';           // dedup checks this board
-const SAVED_LIST_ID = 'YOUR_SAVED_LIST_ID'; // new clips land in this list
+const SAVED_LIST_ID = 'YOUR_SAVED_LIST_ID'; // new saves land in this list
 
 const T = 'https://api.trello.com/1';
 
@@ -29,17 +29,17 @@ const TEXT = {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method !== 'GET' || url.pathname !== '/clip') {
+    if (request.method !== 'GET' || url.pathname !== '/track') {
       return new Response('OK', { status: 200, headers: TEXT });
     }
 
     // The endpoint mutates your Trello board and fetches arbitrary URLs
     // server-side — without this gate, anyone who learns the Worker URL
     // could spam your board or use it as an open fetch proxy.
-    if (!env.CLIP_SECRET) {
-      return new Response('Not configured: set the CLIP_SECRET secret', { status: 500, headers: TEXT });
+    if (!env.TRACK_SECRET) {
+      return new Response('Not configured: set the TRACK_SECRET secret', { status: 500, headers: TEXT });
     }
-    if (url.searchParams.get('s') !== env.CLIP_SECRET) {
+    if (url.searchParams.get('s') !== env.TRACK_SECRET) {
       return new Response('Forbidden', { status: 403, headers: TEXT });
     }
 
@@ -87,7 +87,7 @@ async function isDuplicate(canonicalUrl, auth) {
     const cards = await res.json();
     return cards.some(c => c.desc && c.desc.includes(`Link: ${canonicalUrl}\n`));
   } catch {
-    return false; // fail open — better a rare duplicate than a lost clip
+    return false; // fail open — better a rare duplicate than a lost save
   }
 }
 

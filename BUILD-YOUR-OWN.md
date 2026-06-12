@@ -1,6 +1,6 @@
-# Build your own clipper
+# Build your own tracker
 
-Job Clipper is one instance of a reusable pattern:
+Job Tracker is one instance of a reusable pattern:
 
 > **any site you browse → grab structured data on click → send it to the tool where you actually work**
 
@@ -12,7 +12,7 @@ shape helps you ask for the right things.
 
 | Role | File(s) | What it knows |
 |---|---|---|
-| **Source adapters** | `extension/content-seek.js`, `extension/content-linkedin.js` | How to spot a job page, extract its fields, and show the Clip button. One file per site; they know nothing about Trello. |
+| **Source adapters** | `extension/content-seek.js`, `extension/content-linkedin.js` | How to spot a job page, extract its fields, and show the Save button. One file per site; they know nothing about Trello. |
 | **The spine** | `extension/background.js` | Owns local storage and dedup. Routes every save/move/delete. Knows nothing about any site's DOM. |
 | **Destination adapter** | `extension/trello.js` | The only file that talks to Trello. Six functions: validate, find-or-create board, find card by URL (the dedup lookup), create card, move card, archive card. |
 | **Local tracker** | `extension/popup.html/js` | The UI over local storage. Works with no destination connected at all. |
@@ -22,14 +22,14 @@ shape helps you ask for the right things.
 Three properties make the pattern resilient — keep them when you adapt it:
 
 1. **Local storage is the source of truth.** The destination is a sync target. If it's down,
-   unconfigured, or rate-limited, clipping still works.
+   unconfigured, or rate-limited, saving still works.
 2. **Dedup keys on a canonical URL.** Every source adapter reduces a messy URL
    (`?ref=search&trk=...`) to one canonical form (`/jobs/view/12345/`). That's what makes
-   "clip it twice, get one card" work across devices.
+   "save it twice, get one card" work across devices.
 3. **Adapters are thin and isolated.** When a site redesign breaks scraping (it will), the blast
    radius is one file.
 
-## Swap the source: clip from a different site
+## Swap the source: save from a different site
 
 What's involved (using "add Indeed" as the example):
 
@@ -41,7 +41,7 @@ What's involved (using "add Indeed" as the example):
 
 The prompt to give Claude:
 
-> "Add support for clipping from indeed.com. Here's a job listing URL: [paste one]. Look at
+> "Add support for saving from indeed.com. Here's a job listing URL: [paste one]. Look at
 > content-seek.js for the pattern."
 
 **The scraping lesson we learned the hard way:** prefer signals a site *can't easily change* over
@@ -50,7 +50,7 @@ every deploy. The stable signals: `document.title` (usually "Job Title | Company
 patterns (`href*="/company/"`), data attributes (`data-automation="job-title"`), and JSON-LD
 metadata. `content-linkedin.js` is the worked example of building on stable ground.
 
-## Swap the destination: send clips somewhere else
+## Swap the destination: send jobs somewhere else
 
 What's involved (using "Notion instead of Trello" as the example):
 
@@ -65,7 +65,7 @@ What's involved (using "Notion instead of Trello" as the example):
 
 The prompt to give Claude:
 
-> "Replace the Trello destination with Notion. I want clips to land in a Notion database with a
+> "Replace the Trello destination with Notion. I want saves to land in a Notion database with a
 > Status select property. Keep the local tracker and the dedup behaviour."
 
 Destinations that fit this shape well: Notion, Airtable, Google Sheets (needs OAuth — more setup
@@ -74,7 +74,7 @@ friction), GitHub Issues, a plain webhook into Zapier/Make/n8n.
 ## Add an entry point: reach surfaces the extension can't
 
 The phone was ours (see `mobile/`): a share-sheet Shortcut → tiny Worker → same board, same
-dedup. The recipe generalizes — anything that can fire a URL at a Worker can clip:
+dedup. The recipe generalizes — anything that can fire a URL at a Worker becomes an entry point:
 
 - An Android share target (HTTP Shortcuts app)
 - A bookmarklet for browsers where you can't install the extension
@@ -104,7 +104,7 @@ The prompt:
   for any destination.
 - **Canonical URLs across entry points:** if the extension and the mobile worker derive
   different canonical forms for the same job, dedup silently fails. The logic lives in each
-  source adapter *and* `mobile/worker.js` — change both or clip twice.
+  source adapter *and* `mobile/worker.js` — change both or save twice.
 - **The dedup contract:** board-level dedup searches card descriptions for the full
   `Link: <url>` line (newline-terminated, so a short job id can't match a longer one). If you
   change the card format, update `trelloFindCardByUrl` — and `mobile/worker.js` — to match.

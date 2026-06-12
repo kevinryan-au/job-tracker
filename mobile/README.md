@@ -1,17 +1,17 @@
-# Mobile clipping (optional add-on)
+# Track jobs from your phone (optional add-on)
 
 The Chrome extension can't follow you into the LinkedIn and Seek **phone apps** — they don't run
 extensions. This add-on fixes that with two small pieces:
 
 1. **A Cloudflare Worker** (free tier) — takes a job URL, fetches the page server-side, extracts
    the details, and files a card into your board's *Saved* list, with the same dedup as the extension.
-2. **An iOS Shortcut** — adds *Clip job* to your phone's share sheet, pointing at the Worker.
+2. **An iOS Shortcut** — adds *Track job* to your phone's share sheet, pointing at the Worker.
 
-Tap **Share** on any job in the LinkedIn or Seek app → **Clip job** → the card is on your board.
+Tap **Share** on any job in the LinkedIn or Seek app → **Track job** → the card is on your board.
 
-> Skip this entirely if you only clip from your computer — the extension never uses it.
+> Skip this entirely if you only save from your computer — the extension never uses it.
 > The fastest way through this setup is to open the repo in Claude Code and say
-> **"set up mobile clipping"** — `CLAUDE.md` has the playbook. Manual steps below.
+> **"set up mobile saving"** — `CLAUDE.md` has the playbook. Manual steps below.
 
 ## Prerequisites
 
@@ -50,17 +50,17 @@ npx wrangler deploy   # prints your Worker URL when done
 ```bash
 npx wrangler secret put TRELLO_KEY     # paste your API key when prompted
 npx wrangler secret put TRELLO_TOKEN   # paste your token when prompted
-npx wrangler secret put CLIP_SECRET    # invent any passphrase, e.g. from: openssl rand -hex 12
+npx wrangler secret put TRACK_SECRET    # invent any passphrase, e.g. from: openssl rand -hex 12
 ```
 
-`CLIP_SECRET` matters: the endpoint creates cards on your board and fetches whatever URL it's
+`TRACK_SECRET` matters: the endpoint creates cards on your board and fetches whatever URL it's
 given, so it must only respond to requests that know your passphrase. Without the gate, anyone
 who stumbled on the Worker URL could spam your board.
 
 **5. Test it** — open this in any browser (use a real job URL and your secret):
 
 ```
-https://job-clipper.<your-account>.workers.dev/clip?s=YOUR_SECRET&url=https://www.seek.com.au/job/12345678
+https://job-tracker.<your-account>.workers.dev/track?s=YOUR_SECRET&url=https://www.seek.com.au/job/12345678
 ```
 
 You should see `Saved to Trello: …` and the card on your board. Run it twice — the second
@@ -74,20 +74,20 @@ response should be `Already saved`.
    arrives as plain text)
 3. Add the action **URL Encode** with **Shortcut Input** as its input
 4. Add the action **Get Contents of URL**, and set the URL to:
-   `https://job-clipper.<your-account>.workers.dev/clip?s=YOUR_SECRET&url=` followed by the
+   `https://job-tracker.<your-account>.workers.dev/track?s=YOUR_SECRET&url=` followed by the
    **URL Encoded Text** variable from step 3. Keep `url=` as the **last** parameter — job URLs
    contain `&`, and the Worker reads everything after `url=` as the job link
 5. Add the action **Show Notification** (or *Show Result*) with **Contents of URL** as its body —
-   so you see "Saved to Trello: …" after clipping
-6. Name it **Clip job** and save
+   so you see "Saved to Trello: …" after saving
+6. Name it **Track job** and save
 
-Now in the LinkedIn or Seek app: open a job → **Share** → **Clip job**.
+Now in the LinkedIn or Seek app: open a job → **Share** → **Track job**.
 
 ## Notes
 
 - **Cost:** $0. Cloudflare's free tier allows 100,000 requests/day; you will use a handful.
 - **Privacy:** the Worker is yours, on your account, using your token — nothing goes through
-  anyone else's server. The endpoint only answers requests carrying your `CLIP_SECRET`.
+  anyone else's server. The endpoint only answers requests carrying your `TRACK_SECRET`.
 - **Scraping quality:** server-side extraction reads the page's metadata (og: tags, JSON-LD).
   LinkedIn sometimes serves logged-out pages with less detail — the card still gets the link
   and title, and dedup still works, so fill in anything missing when you next open the board.

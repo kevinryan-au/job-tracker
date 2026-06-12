@@ -1,4 +1,4 @@
-// Job Clipper — Background service worker
+// Job Tracker — Background service worker
 // Single writer for chrome.storage.local and single owner of all Trello calls.
 // Content scripts and the popup/options pages talk to it via messages; the
 // popup re-renders off storage.onChanged rather than writing storage itself.
@@ -79,7 +79,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   run
     .then(sendResponse)
     .catch(err => {
-      console.error(`[JobClipper] ${msg.type} error:`, err);
+      console.error(`[JobTracker] ${msg.type} error:`, err);
       sendResponse({ ok: false, error: err.message });
     });
   return true; // keep channel open for async response
@@ -111,7 +111,7 @@ async function handleSaveJob(job) {
     if (!config) return { ok: true, alreadySaved: false, local: true };
 
     try {
-      // Guard 3: live board — catches the same job clipped from another device
+      // Guard 3: live board — catches the same job saved from another device
       // (e.g. the phone Shortcut). Adopt the existing card instead of duplicating.
       const existingId = await trelloFindCardByUrl(job.url, config);
       const cardId = existingId || await trelloCreateCard(job, config);
@@ -123,7 +123,7 @@ async function handleSaveJob(job) {
       }
       return { ok: true, alreadySaved: !!existingId };
     } catch (e) {
-      console.error('[JobClipper] Trello sync failed:', e.message);
+      console.error('[JobTracker] Trello sync failed:', e.message);
       return { ok: true, alreadySaved: false, local: true }; // saved locally regardless
     }
   } finally {
@@ -144,7 +144,7 @@ async function handleUpdateStatus(url, newStatus) {
     try {
       await trelloMoveCard(jobs[idx].trelloCardId, newStatus, config);
     } catch (e) {
-      console.error('[JobClipper] Trello move failed:', e.message);
+      console.error('[JobTracker] Trello move failed:', e.message);
       return { ok: true, syncError: e.message };
     }
   }
@@ -164,7 +164,7 @@ async function handleDeleteJob(url) {
     try {
       await trelloArchiveCard(job.trelloCardId, config);
     } catch (e) {
-      console.error('[JobClipper] Trello archive failed:', e.message);
+      console.error('[JobTracker] Trello archive failed:', e.message);
     }
   }
   return { ok: true };
@@ -182,7 +182,7 @@ async function handleClearAll() {
       try {
         await trelloArchiveCard(job.trelloCardId, config);
       } catch (e) {
-        console.error('[JobClipper] Trello archive failed:', e.message);
+        console.error('[JobTracker] Trello archive failed:', e.message);
         if (e.message.includes('401')) break; // revoked token — every call will fail
       }
       await new Promise(r => setTimeout(r, 150)); // stay well under Trello rate limits
@@ -246,7 +246,7 @@ async function handleTrelloAuthUrl(key) {
   if (!k) return { ok: false, error: 'Missing API key' };
   const params = new URLSearchParams({
     expiration: 'never',
-    name: 'Job Clipper',
+    name: 'Job Tracker',
     scope: 'read,write',
     response_type: 'token',
     key: k
@@ -308,7 +308,7 @@ async function handleTrelloSyncAll() {
         await setJobs(fresh);
       }
     } catch (e) {
-      console.error('[JobClipper] sync failed for', job.url, e.message);
+      console.error('[JobTracker] sync failed for', job.url, e.message);
       if (e.message.includes('401')) break; // revoked token — every call will fail
     }
     await new Promise(r => setTimeout(r, 300)); // rate-limit gap on success AND failure

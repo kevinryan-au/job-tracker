@@ -1,11 +1,11 @@
-// Job Clipper v3.0 — LinkedIn content script
-window.__jobClipperVersion = '3.0';
+// Job Tracker v3.0 — LinkedIn content script
+window.__jobTrackerVersion = '3.0';
 
 (function () {
   'use strict';
 
-  const FLOAT_ID = 'jcp-float-v19';
-  const TOAST_ID = 'jcp-toast-v19';
+  const FLOAT_ID = 'jt-float-v19';
+  const TOAST_ID = 'jt-toast-v19';
 
   function getJobId() {
     const pathMatch = window.location.pathname.match(/\/jobs\/view\/(\d+)/);
@@ -112,7 +112,7 @@ window.__jobClipperVersion = '3.0';
           btn.innerText = '✓ Saved';
           btn.style.background = '#15803d';
           setTimeout(() => {
-            btn.innerText = '+ Clip job';
+            btn.innerText = '+ Track job';
             btn.style.background = '#1d4ed8';
             enableButton();
           }, 2500);
@@ -126,7 +126,7 @@ window.__jobClipperVersion = '3.0';
 
   function rebuildButton() {
     // Remove all old versions
-    ['job-clipper-float', 'jcp-float-v18', 'jcp-float-v19'].forEach(id =>
+    ['job-tracker-float', 'jt-float-v18', 'jt-float-v19'].forEach(id =>
       document.getElementById(id)?.remove()
     );
 
@@ -138,7 +138,7 @@ window.__jobClipperVersion = '3.0';
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');
-    btn.innerText = '+ Clip job';
+    btn.innerText = '+ Track job';
     btn.style.cssText = `padding:10px 20px;background:#1d4ed8;color:#fff;font-size:14px;
       font-weight:600;border:none;border-radius:24px;cursor:pointer;font-family:inherit;
       box-shadow:0 2px 12px rgba(29,78,216,.45);`;
