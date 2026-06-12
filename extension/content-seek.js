@@ -1,4 +1,4 @@
-// Job Tracker v3.0 — Seek content script
+// Job Tracker v3.1 — Seek content script
 // Handles both single job page (/job/12345) and multi-pane search (/jobs?...)
 
 (function () {
@@ -117,7 +117,7 @@
 
     const wrap = document.createElement('div');
     wrap.id = FLOAT_ID;
-    wrap.setAttribute('data-version', '3.0');
+    wrap.setAttribute('data-version', '3.1');
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');

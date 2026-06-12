@@ -1,5 +1,5 @@
-// Job Tracker v3.0 — LinkedIn content script
-window.__jobTrackerVersion = '3.0';
+// Job Tracker v3.1 — LinkedIn content script
+window.__jobTrackerVersion = '3.1';
 
 (function () {
   'use strict';
@@ -134,7 +134,7 @@ window.__jobTrackerVersion = '3.0';
 
     const wrap = document.createElement('div');
     wrap.id = FLOAT_ID;
-    wrap.setAttribute('data-version', '3.0');
+    wrap.setAttribute('data-version', '3.1');
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');
