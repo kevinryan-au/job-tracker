@@ -1,252 +1,144 @@
-# Job Clipper — Claude Setup Guide
+# CLAUDE.md — map of this codebase for Claude
 
-Job Clipper is a Chrome extension that saves jobs from Seek and LinkedIn to a Trello board with one click. It has two parts: a Chrome extension (this folder) and a Cloudflare Worker that handles Trello API calls.
+Job Clipper is a Chrome (MV3) extension that clips job listings from Seek and LinkedIn into a
+local tracker, with optional sync to the user's Trello board, plus an optional Cloudflare Worker
+that lets an iOS Shortcut clip from the phone. It is also a **template**: users are encouraged to
+ask you to adapt it — new source sites, new destinations, new entry points. `BUILD-YOUR-OWN.md`
+is the human-facing version of that pitch; this file is your map.
 
-This file tells Claude how to set everything up for a new user. If you've been asked to "set this up", follow the steps below in order.
+There is **no build step and no dependency install**. Every file ships as-is; after editing,
+the user reloads the extension at `chrome://extensions` (refresh icon) and reloads the target
+site's tab.
 
----
-
-## What you're setting up
+## Layout
 
 ```
-Chrome Extension  →  Cloudflare Worker  →  Trello Board
-(this folder)        (your free account)    (auto-created)
+extension/               the Chrome extension (load this folder unpacked)
+  manifest.json          MV3 config — host_permissions gate ALL cross-origin fetches
+  content-seek.js        source adapter: Seek (button injection + DOM scraping)
+  content-linkedin.js    source adapter: LinkedIn
+  background.js          THE SPINE — classic service worker; single writer of storage,
+                         single owner of Trello calls; message router
+  trello.js              destination adapter — only file that talks to api.trello.com;
+                         loaded into the SW via importScripts (NOT an ES module)
+  popup.html/js          tracker UI; pure view, mutates only via messages to background
+  options.html/js        Trello connect/disconnect/sync UI; pure view, same rule
+mobile/                  OPTIONAL phone add-on (Cloudflare Worker + iOS Shortcut recipe)
+  worker.js              GET /clip?url= → server-side scrape → Trello card
+  README.md              human setup guide (deploy + Shortcut)
 ```
 
-- The **Worker** holds Trello credentials and handles all card creation/dedup
-- The **extension** scrapes job details from Seek/LinkedIn and sends them to the Worker
-- The **Trello board** has five lists: Saved, Applied, Interview, Offer, Rejected
+## Data flow and contracts
+
+**Storage (chrome.storage.local), background.js is the only writer:**
+
+- `jobs` — array of `{ title, company, location, salary, url, source, date, status,
+  trelloCardId? }`. `url` is the **canonical URL** and is the identity key for everything.
+  `status` ∈ saved | applied | interview | offer | rejected.
+- `trelloConfig` — `{ key, token, boardId, boardUrl, boardName, lists: {saved…rejected → listId},
+  username }`, or absent when not connected. Absent ⇒ extension runs local-only (this is a
+  supported first-class mode, not an error state).
+
+**Messages into background.js** (content scripts, popup, options all use these):
+`SAVE_JOB {job}` · `UPDATE_STATUS {url, status}` · `DELETE_JOB {url}` · `CLEAR_ALL` ·
+`IMPORT_JOBS {jobs}` · `TRELLO_STATE` · `TRELLO_AUTH_URL {key?}` · `TRELLO_CONNECT {key?, token}` ·
+`TRELLO_DISCONNECT` · `TRELLO_SYNC_ALL`
+
+**Dedup is three layers** (all in background.js): in-flight `Set` → storage scan by `url` →
+live board check (`trelloFindCardByUrl`, which matches the newline-terminated `Link: <url>` line
+in open cards' descriptions). If a card already exists (e.g. clipped from the phone), its id is
+**adopted** onto the local job rather than creating a duplicate. Jobs-mutating message handlers
+are serialized through a queue in the router — keep new mutating handlers in the `MUTATING` set
+or concurrent read-modify-writes will clobber each other.
+
+## Invariants — do not break these when adapting
+
+1. **Canonical URLs must match across every entry point.** Seek → `https://www.seek.com.au/job/{id}`;
+   LinkedIn → `https://www.linkedin.com/jobs/view/{id}/`. The same derivation exists in the
+   content scripts AND `mobile/worker.js` — change one, change both.
+2. **Card descriptions contain the line `Link: <canonical url>`, newline-terminated.** Board
+   dedup matches the full line including the trailing `\n` (the `Saved:` line always follows) —
+   `trello.js` and `mobile/worker.js` both write and match it. Changing the card format without
+   updating both finders silently kills dedup; dropping the newline anchor lets job id `1234`
+   wrongly adopt the card for `12345`.
+3. **background.js is a CLASSIC service worker** — it uses `importScripts('trello.js')`. Do not
+   convert to ES `import` unless you also set `"type": "module"` in the manifest, and don't add
+   `export` statements to `trello.js` (it defines globals).
+4. **Any new API host must be added to `host_permissions`** in manifest.json, or the SW's fetches
+   die with what looks like a CORS error.
+5. **Local-only mode keeps working.** Every Trello call is wrapped so its failure (or absence of
+   config) never blocks a local save. Keep that property for any new destination.
+6. **Batch Trello operations go sequentially with delays** (`CLEAR_ALL` 150ms, `TRELLO_SYNC_ALL`
+   300ms). Trello limits ~100 req/10s per token. Don't parallelize them.
+7. **Scrape failure still saves.** Content scripts fall back to `(untitled job)` + URL rather
+   than refusing to save.
+
+## Playbooks
+
+### "The button stopped working / clip can't read details" (broken scraper)
+
+The most common request — sites change their DOM constantly. Diagnose in this order:
+
+1. Ask for a URL where it fails. Check whether the **domain or URL shape changed** vs
+   `manifest.json` matches and `getJobId()` patterns (this is what broke when Seek moved to
+   `au.seek.com`: content script never injected).
+2. If the button appears but extraction fails, inspect the **live page** (the user is logged in —
+   use their browser via the Chrome MCP if available). Don't guess selectors blind.
+3. Rebuild extraction on **stable signals**, not CSS classes — LinkedIn hashes its classes
+   randomly every deploy. In order of preference: `document.title` (usually
+   "Title | Company | Site"), URL patterns in hrefs (`a[href*="/company/"]`), data attributes
+   (`data-automation=…` on Seek), JSON-LD. `content-linkedin.js` shows the approach.
+4. Validate the new extractor against the live page before writing it into the file.
+5. Remind the user: reload extension at `chrome://extensions`, then reload the job-site tab.
+
+### "Add support for [site]"
+
+1. Get a sample job URL. Work out the job-id pattern and the canonical URL form.
+2. Copy the closest content script; rewrite `getJobId()` + `extractJob()` (stable signals — see
+   above; check whether the site ships JSON-LD or `data-*` attributes before resorting to DOM
+   heuristics).
+3. Add `content_scripts` + `host_permissions` entries in manifest.json.
+4. Add the source name in the popup's filter row (`popup.html`) and `sources` tally
+   (`popup.js → renderStats`) if they want it filterable.
+5. If they use the mobile worker, extend its `scrape()` canonical-URL logic for the new site.
+
+### "Send clips to [Notion/Airtable/Sheets/…] instead of Trello"
+
+1. Write a new destination adapter implementing trello.js's contract: `validate`,
+   `findOrCreateBoard` (or database/sheet equivalent), `createCard`, `moveCard`, `archiveCard`,
+   `findCardByUrl` (the dedup lookup — store the canonical URL somewhere queryable).
+2. Keep the function names/messages or rename consistently through background.js.
+3. Update `options.html/js` for the new credential and its "where do I get this" help text.
+4. Swap the `host_permissions` entry. Check the API actually allows direct calls with a simple
+   token (Notion does; Google Sheets needs OAuth — warn the user it's more involved).
+5. Keep statuses: saved/applied/interview/offer/rejected map to lists/selects/columns.
+
+### "Set up mobile clipping" (deploy the optional Worker)
+
+Follow `mobile/README.md` with the user, driving the terminal yourself where possible:
+
+1. They must already be connected to Trello in the extension (Settings page).
+2. Get their key + token (ask them to paste; they already have both from desktop setup).
+3. `curl` Trello for their board id and Saved-list id (commands in mobile/README.md); write them
+   into `mobile/worker.js` constants.
+4. From `mobile/`: `npx wrangler login` (browser approve) → `npx wrangler deploy` → capture URL.
+5. `npx wrangler secret put TRELLO_KEY`, `TRELLO_TOKEN`, and `CLIP_SECRET` (generate a passphrase
+   for the latter, e.g. `openssl rand -hex 12` — it gates the endpoint; keep it for step 6 and
+   the Shortcut URL).
+6. Test: `curl "https://<worker-url>/clip?s=<secret>&url=<real job url>"` — expect
+   "Saved to Trello: …", then run again and expect "Already saved". Note `url=` must be the
+   LAST query param (the worker reads everything after it, so unencoded `&`s in job URLs survive).
+7. Walk them through the Shortcut recipe (mobile/README.md) — that part is on their phone.
 
----
+### "Help me install it" (desktop)
 
-## Setup steps
+No terminal needed: download/clone → `chrome://extensions` → Developer mode → Load unpacked →
+select `extension/` folder. Then (optional) ⚙ Settings → follow the two-step Trello connect.
+If the user forked this repo and baked a shared API key into `trello.js`
+(`SHARED_TRELLO_KEY`), step 1 of connect disappears for their users — offer that to forkers.
 
-Work through these in order. Each step tells you what to do and what to check before moving on.
+## Voice and docs
 
----
-
-### Step 1 — Check Node / npm
-
-Run:
-```bash
-node --version
-npm --version
-```
-
-If either command fails, tell the user:
-> "Please install Node.js from nodejs.org (LTS version), then come back and say 'continue setup'."
-> Stop here until they confirm it's installed.
-
----
-
-### Step 2 — Install Wrangler
-
-Run:
-```bash
-npm install -g wrangler
-wrangler --version
-```
-
-If installation fails, try `npx wrangler --version` instead and use `npx wrangler` for all subsequent wrangler commands.
-
----
-
-### Step 3 — Log in to Cloudflare
-
-Run:
-```bash
-wrangler login
-```
-
-This opens a browser window. Tell the user:
-> "A browser window just opened — log in to your Cloudflare account (or create a free one at cloudflare.com) and click Approve."
-
-Wait for them to confirm before continuing.
-
----
-
-### Step 4 — Get Trello credentials
-
-Tell the user:
-> "Open this URL in your browser: https://trello.com/app-key
-> You'll see your API Key at the top. Copy it and paste it here."
-
-Save what they paste as TRELLO_KEY.
-
-Then tell them:
-> "On the same page, click the 'Token' link (it's just below your API Key). Trello will ask you to approve access — this is safe, it just allows Job Clipper to create and move cards on your behalf. Click Allow, then copy the long token string that appears and paste it here."
-
-Save what they paste as TRELLO_TOKEN.
-
----
-
-### Step 5 — Create the Trello board and lists
-
-Using the Trello API, create a new board called "Job Hunt" and five lists in this order:
-1. Saved
-2. Applied
-3. Interview
-4. Offer
-5. Rejected
-
-API calls to make:
-
-**Create board:**
-```
-POST https://api.trello.com/1/boards/?name=Job%20Hunt&defaultLists=false&key={TRELLO_KEY}&token={TRELLO_TOKEN}
-```
-Save the board `id` as BOARD_ID and the board `url` as BOARD_URL.
-
-**Create each list** (in order — Trello displays them in creation order):
-```
-POST https://api.trello.com/1/lists?name={LIST_NAME}&idBoard={BOARD_ID}&key={TRELLO_KEY}&token={TRELLO_TOKEN}
-```
-Save each list `id`:
-- SAVED_LIST_ID
-- APPLIED_LIST_ID
-- INTERVIEW_LIST_ID
-- OFFER_LIST_ID
-- REJECTED_LIST_ID
-
-Use the Bash tool to make these API calls with curl.
-
----
-
-### Step 6 — Update worker.js with the user's board/list IDs
-
-Edit `worker/worker.js`. Find this block near the top:
-
-```js
-const BOARD_ID = '...';
-const L = {
-  saved:     '...',
-  applied:   '...',
-  interview: '...',
-  offer:     '...',
-  rejected:  '...'
-};
-```
-
-Replace all the IDs with the values captured in Step 5.
-
----
-
-### Step 7 — Deploy the Worker
-
-Run from the `worker/` directory (wrangler needs `wrangler.toml` to be present):
-```bash
-cd worker && wrangler deploy
-```
-
-After deploy succeeds, capture the Worker URL from the output — it will look like:
-`https://job-clipper.<something>.workers.dev`
-
-Save this as WORKER_URL.
-
----
-
-### Step 8 — Set Worker environment variables
-
-Run these from the `worker/` directory:
-```bash
-cd worker
-echo "{TRELLO_KEY}" | wrangler secret put TRELLO_KEY
-echo "{TRELLO_TOKEN}" | wrangler secret put TRELLO_TOKEN
-echo "*" | wrangler secret put ALLOWED_ORIGIN
-```
-
-Confirm each one succeeds before moving on.
-
----
-
-### Step 9 — Update the extension with the Worker URL and Trello board URL
-
-Edit `extension/background.js`. Find this line near the top:
-
-```js
-const WORKER_URL = 'YOUR_WORKER_URL';
-```
-
-Replace `YOUR_WORKER_URL` with WORKER_URL from Step 7.
-
-Edit `extension/popup.js`. Find these two lines near the top:
-
-```js
-const WORKER_URL = 'YOUR_WORKER_URL';
-const TRELLO_BOARD_URL = 'YOUR_TRELLO_BOARD_URL';
-```
-
-Replace `YOUR_WORKER_URL` with WORKER_URL from Step 7.
-Replace `YOUR_TRELLO_BOARD_URL` with BOARD_URL from Step 5.
-
----
-
-### Step 10 — Load the extension in Chrome
-
-Tell the user:
-> "Almost done — one manual step:
-> 1. Open Chrome and go to: chrome://extensions
-> 2. Turn on **Developer mode** (toggle, top-right corner)
-> 3. Click **Load unpacked** and select the `extension` folder from this project
-> 4. Pin the Job Clipper icon by clicking the puzzle piece in the Chrome toolbar
->
-> That's it! Go to any Seek or LinkedIn job listing — you'll see a blue Clip button."
-
----
-
-### Step 11 — Verify everything works
-
-Ask the user to:
-1. Go to a Seek or LinkedIn job listing
-2. Click the Clip button
-3. Check their Trello "Job Hunt" board — a card should appear in the Saved list
-
-If the card doesn't appear, check:
-- `chrome://extensions` → Job Clipper → Errors (click the Errors button)
-- The Worker logs: `wrangler tail` in the terminal
-- That the Trello API key and token were set correctly (Step 8)
-
----
-
-## Troubleshooting reference
-
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| Clip button doesn't appear on Seek | URL pattern mismatch | Check manifest.json matches `au.seek.com` and `seek.com.au` |
-| Clip button doesn't appear on LinkedIn | Extension not loaded or wrong URL | Check chrome://extensions, reload extension |
-| "Extension error — try reloading" toast | Worker URL wrong or Worker not deployed | Check WORKER_URL in background.js matches deployed URL |
-| "Save failed" toast | Trello credentials wrong | Re-run Step 8, check key/token are correct |
-| Card appears with "(untitled job)" | Site DOM changed, scraper couldn't extract details | Tell the user — this is a known limitation, card has the job URL |
-| Duplicate cards | Old cards in Trello with mismatched URLs | One-time issue from before setup; won't recur |
-
----
-
-## File structure
-
-```
-job-clipper/
-├── CLAUDE.md                 ← you are here
-├── README.md
-├── LICENSE
-├── extension/
-│   ├── manifest.json         ← host permissions, content script config
-│   ├── background.js         ← service worker, routes saves to Worker
-│   ├── content-linkedin.js   ← LinkedIn scraper + Clip button
-│   ├── content-seek.js       ← Seek scraper + Clip button
-│   ├── popup.html / popup.js ← tracker UI
-│   └── icons/
-└── worker/
-    ├── worker.js             ← Cloudflare Worker (Trello API, dedup)
-    └── wrangler.toml
-```
-
----
-
-## Updating the extension later
-
-If Seek or LinkedIn changes their site structure and the Clip button stops working or can't extract job details:
-- The scraper logic is in `extension/content-seek.js` and `extension/content-linkedin.js`
-- Open the relevant file and describe the symptom — Claude can inspect the live page and fix the selectors
-- After editing, reload the extension at `chrome://extensions` (click the refresh icon)
-
-The Worker rarely needs updating — it only changes if Trello's API changes or you want new features.
+README.md is written in Kevin's first person as a showcase ("built by describing it to Claude") —
+keep that voice if you edit it. The story beats (Seek domain move, LinkedIn hashed classes,
+duplicate-card race, the phone as Act 2) are real history; don't invent new ones.

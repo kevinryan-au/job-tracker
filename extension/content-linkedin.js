@@ -1,5 +1,5 @@
-// Job Clipper Pro v1.9 — LinkedIn content script
-window.__jobClipperVersion = '1.9';
+// Job Clipper v3.0 — LinkedIn content script
+window.__jobClipperVersion = '3.0';
 
 (function () {
   'use strict';
@@ -79,6 +79,15 @@ window.__jobClipperVersion = '1.9';
     setTimeout(() => t.remove(), 3000);
   }
 
+  function enableButton() {
+    const btn = document.querySelector(`#${FLOAT_ID} button`);
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    }
+  }
+
   function handleSave() {
     const job = extractJob();
     const partialSave = !job.title;
@@ -89,10 +98,12 @@ window.__jobClipperVersion = '1.9';
     chrome.runtime.sendMessage({ type: 'SAVE_JOB', job }, (response) => {
       if (chrome.runtime.lastError) {
         showToast('Extension error — try reloading.', 'error');
+        enableButton();
         return;
       }
       if (response?.alreadySaved) {
         showToast('Already saved!', 'warn');
+        enableButton();
       } else if (response?.ok) {
         showToast(partialSave ? 'Saved (URL only) — details not extracted' : `Saved: ${job.title}`,
           partialSave ? 'warn' : 'success');
@@ -103,10 +114,12 @@ window.__jobClipperVersion = '1.9';
           setTimeout(() => {
             btn.innerText = '+ Clip job';
             btn.style.background = '#1d4ed8';
+            enableButton();
           }, 2500);
         }
       } else {
         showToast('Save failed — check extension.', 'error');
+        enableButton();
       }
     });
   }
@@ -121,7 +134,7 @@ window.__jobClipperVersion = '1.9';
 
     const wrap = document.createElement('div');
     wrap.id = FLOAT_ID;
-    wrap.setAttribute('data-version', '1.9');
+    wrap.setAttribute('data-version', '3.0');
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');

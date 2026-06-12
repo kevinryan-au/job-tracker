@@ -1,8 +1,0 @@
-# Cloudflare Worker config for Job Clipper
-# The worker name below becomes part of your Worker URL:
-# https://job-clipper.<your-account>.workers.dev
-# You can change "job-clipper" to anything you like.
-
-name = "job-clipper"
-main = "worker.js"
-compatibility_date = "2024-01-01"

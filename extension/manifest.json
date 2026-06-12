@@ -1,17 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Job Clipper Pro",
-  "version": "2.0",
-  "description": "Save jobs from Seek and LinkedIn, synced with Trello.",
-  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "name": "Job Clipper",
+  "version": "3.0",
+  "description": "Clip jobs from Seek and LinkedIn into a local tracker, with optional sync to your Trello board.",
+  "permissions": ["storage"],
   "host_permissions": [
-    "https://www.seek.com.au/*",
-    "https://au.seek.com/*",
-    "https://www.linkedin.com/*",
-    "https://*.workers.dev/*"
+    "https://api.trello.com/*"
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "action": {
     "default_popup": "popup.html",

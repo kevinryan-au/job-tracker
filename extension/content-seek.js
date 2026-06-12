@@ -1,4 +1,4 @@
-// Job Clipper Pro v2.0 — Seek content script
+// Job Clipper v3.0 — Seek content script
 // Handles both single job page (/job/12345) and multi-pane search (/jobs?...)
 
 (function () {
@@ -65,6 +65,15 @@
     setTimeout(() => t.remove(), 3000);
   }
 
+  function enableButton() {
+    const btn = document.querySelector(`#${FLOAT_ID} button`);
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    }
+  }
+
   function handleSave() {
     const job = extractJob();
     const partialSave = !job.title;
@@ -73,10 +82,12 @@
     chrome.runtime.sendMessage({ type: 'SAVE_JOB', job }, (response) => {
       if (chrome.runtime.lastError) {
         showToast('Extension error — try reloading.', 'error');
+        enableButton();
         return;
       }
       if (response?.alreadySaved) {
         showToast('Already saved!', 'warn');
+        enableButton();
       } else if (response?.ok) {
         showToast(partialSave ? 'Saved (URL only) — details not extracted' : `Saved: ${job.title}`,
           partialSave ? 'warn' : 'success');
@@ -84,10 +95,15 @@
         if (btn) {
           btn.innerText = '✓ Saved';
           btn.style.background = '#15803d';
-          setTimeout(() => { btn.innerText = '+ Clip job'; btn.style.background = '#1d4ed8'; }, 2500);
+          setTimeout(() => {
+            btn.innerText = '+ Clip job';
+            btn.style.background = '#1d4ed8';
+            enableButton();
+          }, 2500);
         }
       } else {
         showToast('Save failed — check extension.', 'error');
+        enableButton();
       }
     });
   }
@@ -101,7 +117,7 @@
 
     const wrap = document.createElement('div');
     wrap.id = FLOAT_ID;
-    wrap.setAttribute('data-version', '2.0');
+    wrap.setAttribute('data-version', '3.0');
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');
