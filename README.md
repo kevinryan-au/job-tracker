@@ -70,6 +70,7 @@ this. Here's what that actually looked like:
 | Seek moved from `seek.com.au` to `au.seek.com` — button vanished | Told Claude "it stopped working on Seek", pasted a URL. It spotted the domain change and patched the manifest. | ~5 min |
 | LinkedIn replaced all its CSS classes with random hashes (`_967cf84a`) that change every deploy | Claude inspected the live page through my browser, found the signals LinkedIn *can't* obfuscate (document title, company URL pattern), and rebuilt the scraper on those. | ~15 min |
 | Duplicate Trello cards from double-clicks and saving on two devices | Claude traced the race condition and added three layers of dedup. | ~10 min |
+| Seek shipped a slide-out job pane that showed a job without putting its id in the URL — button vanished again | Claude inspected the live pane, found the job id still lived in the Apply link, and anchored on that instead of the URL. | ~10 min |
 
 No documentation reading. No Stack Overflow. The repair loop is: *describe the symptom in plain
 English → Claude inspects the live page → fix lands*. That loop is the real product here.

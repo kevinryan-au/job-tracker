@@ -1,4 +1,4 @@
-// Job Tracker v3.1 — Seek content script
+// Job Tracker v3.2 — Seek content script
 // Handles the single job page (/job/12345), the multi-pane search (?jobId=),
 // and Seek's slide-out job pane (2026) where the URL stays on the list page.
 
@@ -126,7 +126,7 @@
 
     const wrap = document.createElement('div');
     wrap.id = FLOAT_ID;
-    wrap.setAttribute('data-version', '3.1');
+    wrap.setAttribute('data-version', '3.2');
     wrap.style.cssText = 'position:fixed;bottom:140px;right:20px;z-index:2147483646;';
 
     const btn = document.createElement('button');
