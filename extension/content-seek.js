@@ -1,5 +1,6 @@
 // Job Tracker v3.1 — Seek content script
-// Handles both single job page (/job/12345) and multi-pane search (/jobs?...)
+// Handles the single job page (/job/12345), the multi-pane search (?jobId=),
+// and Seek's slide-out job pane (2026) where the URL stays on the list page.
 
 (function () {
   'use strict';
@@ -11,8 +12,16 @@
     // Single job page: seek.com.au/job/12345678
     const pathMatch = window.location.pathname.match(/\/job\/(\d+)/);
     if (pathMatch) return pathMatch[1];
-    // Multi-pane: jobId appears as query param e.g. ?jobId=12345678
-    return new URLSearchParams(window.location.search).get('jobId');
+    // Multi-pane search: jobId appears as query param e.g. ?jobId=12345678
+    const qp = new URLSearchParams(window.location.search).get('jobId');
+    if (qp) return qp;
+    // Slide-out job pane (Seek 2026): the URL stays on the list/home page with
+    // no id, but the open pane's Apply link carries the active job's id.
+    // data-automation hooks are Seek's stable contract, so anchor on that.
+    const applyHref =
+      document.querySelector('a[data-automation="job-detail-apply"]')?.getAttribute('href') ||
+      document.querySelector('a[href*="/job/"][href*="apply"]')?.getAttribute('href') || '';
+    return (applyHref.match(/\/job\/(\d+)/) || [])[1] || null;
   }
 
   function isJobContext() {
